@@ -14,38 +14,22 @@
 const STORAGE_KEY = 'chat_messages';
 
 /**
- * Saves a chat message to localStorage
- * @param {ChatMessage} message - The message to save
- * @throws {Error} If message is invalid or storage fails
- * @returns {Promise<void>}
+ * Save a message to localStorage
+ * @param {Object} message - Message object with sender and content
  */
-export const saveMessage = async (message) => {
-    try {
-        if (!message || !message.id || !message.content || !message.sender || !message.timestamp) {
-            throw new Error('Invalid message format: message must have id, content, sender, and timestamp');
-        }
-
-        const messages = await getAllMessages();
-        messages.push(message);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-    } catch (error) {
-        console.error('Error saving message:', error);
-        throw error;
-    }
+export const saveMessage = (message) => {
+    const messages = getAllMessages();
+    messages.push(message);
+    localStorage.setItem('messages', JSON.stringify(messages));
 };
 
 /**
- * Retrieves all chat messages from localStorage
- * @returns {Promise<ChatMessage[]>}
+ * Get all messages from localStorage
+ * @returns {Array} Array of message objects
  */
-export const getAllMessages = async () => {
-    try {
-        const messages = localStorage.getItem(STORAGE_KEY);
-        return messages ? JSON.parse(messages) : [];
-    } catch (error) {
-        console.error('Error retrieving messages:', error);
-        return [];
-    }
+export const getAllMessages = () => {
+    const messages = localStorage.getItem('messages');
+    return messages ? JSON.parse(messages) : [];
 };
 
 /**

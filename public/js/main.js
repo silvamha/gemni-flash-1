@@ -1,11 +1,120 @@
+// /**
+//  * @fileoverview Main application entry point
+//  * Initializes the chat interface and handles user interactions
+//  */
+
+// import { initializeTheme, toggleTheme } from './services/themeService.js';
+// import { saveMessage, getAllMessages } from './services/storageService.js';
+// import { handleError } from './utils/errorHandler.js';
+
+// // DOM Elements
+// const chatMessages = document.getElementById('chat-messages');
+// const chatInput = document.getElementById('chat-input');
+// const sendButton = document.getElementById('send-button');
+// const clearButton = document.getElementById('clear-chat');
+// const deleteButton = document.getElementById('delete-all');
+// const themeToggle = document.getElementById('theme-toggle');
+
+// // Initialize theme
+// initializeTheme();
+
+// // Event Listeners
+// document.addEventListener('DOMContentLoaded', () => {
+//     // Theme toggle
+//     themeToggle.addEventListener('click', toggleTheme);
+
+//     // Send message on button click
+//     sendButton.addEventListener('click', sendMessage);
+
+//     // Send message on Enter key
+//     chatInput.addEventListener('keypress', (e) => {
+//         if (e.key === 'Enter') {
+//             sendMessage();
+//         }
+//     });
+
+//     // Clear chat (just clear UI for now)
+//     clearButton.addEventListener('click', () => {
+//         chatMessages.innerHTML = '';
+//         localStorage.setItem('messages', '[]');
+//     });
+
+//     // Delete all (just clear UI for now)
+//     deleteButton.addEventListener('click', () => {
+//         chatMessages.innerHTML = '';
+//         localStorage.setItem('messages', '[]');
+//     });
+// });
+
+// /**
+//  * Send a message to the chat
+//  */
+// async function sendMessage() {
+//     if (!chatInput.value.trim()) return;
+
+//     try {
+//         // Display user message
+//         displayMessage(chatInput.value, 'user');
+
+//         // Show loading message
+//         const loadingMessage = document.createElement('div');
+//         loadingMessage.classList.add('message', 'bot-message', 'loading');
+//         loadingMessage.textContent = 'Harper is typing...';
+//         chatMessages.appendChild(loadingMessage);
+//         chatMessages.scrollTop = chatMessages.scrollHeight;
+
+//         // Get bot response
+//         const response = await fetch('/api/chat', {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json'
+//             },
+//             body: JSON.stringify({ message: chatInput.value })
+//         });
+
+//         if (!response.ok) {
+//             throw new Error('Failed to send message');
+//         }
+
+//         const data = await response.json();
+        
+//         // Save messages to localStorage
+//         saveMessage({ sender: 'user', content: chatInput.value });
+//         saveMessage({ sender: 'bot', content: data.message });
+
+//         // Remove loading message
+//         loadingMessage.remove();
+
+//         // Display the bot's response
+//         displayMessage(data.message, 'bot');
+
+//         // Clear input
+//         chatInput.value = '';
+
+//     } catch (error) {
+//         handleError(error, { showUser: true });
+//     }
+// }
+
+// /**
+//  * Display a message in the chat window
+//  */
+// function displayMessage(message, sender) {
+//     const messageElement = document.createElement('div');
+//     messageElement.classList.add('message', `${sender}-message`);
+//     messageElement.textContent = message;
+//     chatMessages.appendChild(messageElement);
+//     chatMessages.scrollTop = chatMessages.scrollHeight;
+// }
+
+
 /**
  * @fileoverview Main application entry point
  * Initializes the chat interface and handles user interactions
  */
 
+// Theme and Storage services
 import { initializeTheme, toggleTheme } from './services/themeService.js';
-import { saveMessage, getAllMessages, clearAllMessages } from './services/storageService.js';
-import { handleError } from './utils/errorHandler.js';
 
 // DOM Elements
 const chatMessages = document.getElementById('chat-messages');
@@ -15,84 +124,69 @@ const clearButton = document.getElementById('clear-chat');
 const deleteButton = document.getElementById('delete-all');
 const themeToggle = document.getElementById('theme-toggle');
 
-/**
- * Initialize the application
- */
-const init = async () => {
-    try {
-        // Set initial theme
-        await initializeTheme();
+// Initialize theme
+initializeTheme();
 
-        // Load existing messages
-        const messages = await getAllMessages();
-        messages.forEach(message => displayMessage(message));
+// Utility: Save message to localStorage
+function saveMessage(message) {
+    const messages = JSON.parse(localStorage.getItem('messages') || '[]');
+    messages.push(message);
+    localStorage.setItem('messages', JSON.stringify(messages));
+}
 
-        // Set up event listeners
-        setupEventListeners();
-    } catch (error) {
-        handleError(error);
-    }
-};
+// Utility: Retrieve all messages from localStorage
+function getAllMessages() {
+    return JSON.parse(localStorage.getItem('messages') || '[]');
+}
 
-/**
- * Set up event listeners for all interactive elements
- */
-const setupEventListeners = () => {
-    // Send message on button click or Enter key
-    sendButton.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
-    });
+// Load messages from localStorage on page load
+function loadStoredMessages() {
+    const messages = getAllMessages();
+    messages.forEach((msg) => displayMessage(msg.content, msg.sender));
+}
 
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
     // Theme toggle
-    themeToggle.addEventListener('click', async () => {
-        try {
-            await toggleTheme();
-        } catch (error) {
-            handleError(error);
+    themeToggle.addEventListener('click', toggleTheme);
+
+    // Send message on button click
+    sendButton.addEventListener('click', sendMessage);
+
+    // Send message on Enter key
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
         }
     });
 
-    // Clear chat (localStorage)
-    clearButton.addEventListener('click', async () => {
-        try {
-            await clearAllMessages();
-            chatMessages.innerHTML = '';
-        } catch (error) {
-            handleError(error);
-        }
+    // Clear chat
+    clearButton.addEventListener('click', () => {
+        chatMessages.innerHTML = '';
+        localStorage.setItem('messages', '[]'); // Reset localStorage
     });
 
-    // Delete all (future database implementation)
+    // Delete all
     deleteButton.addEventListener('click', () => {
-        alert('Database deletion will be implemented in a future phase');
+        chatMessages.innerHTML = '';
+        localStorage.setItem('messages', '[]'); // Reset localStorage
     });
-};
+
+    // Load saved messages
+    loadStoredMessages();
+});
 
 /**
  * Send a message to the chat
  */
-const sendMessage = async () => {
+async function sendMessage() {
+    if (!chatInput.value.trim()) return;
+
     try {
-        const content = chatInput.value.trim();
-        if (!content) return;
+        // Display user message
+        displayMessage(chatInput.value, 'user');
 
-        // Create message object
-        const message = {
-            id: Date.now().toString(),
-            content,
-            sender: 'user',
-            timestamp: new Date().toISOString()
-        };
-
-        // Save and display user message
-        await saveMessage(message);
-        displayMessage(message);
-
-        // Clear input
-        chatInput.value = '';
-
-        // Show loading indicator
+        // Show loading message
         const loadingMessage = document.createElement('div');
         loadingMessage.classList.add('message', 'bot-message', 'loading');
         loadingMessage.textContent = 'Harper is typing...';
@@ -102,51 +196,40 @@ const sendMessage = async () => {
         // Get bot response
         const response = await fetch('/api/chat', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ message: content })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: chatInput.value })
         });
 
-        // Remove loading indicator
+        if (!response.ok) throw new Error('Failed to send message');
+
+        const data = await response.json();
+
+        // Save messages to localStorage
+        saveMessage({ sender: 'user', content: chatInput.value });
+        saveMessage({ sender: 'bot', content: data.message });
+
+        // Remove loading message
         loadingMessage.remove();
 
-        const responseData = await response.json();
+        // Display bot's response
+        displayMessage(data.message, 'bot');
 
-        if (!response.ok) {
-            throw new Error(responseData.error || responseData.details || 'Failed to get response from Harper');
-        }
+        // Clear input
+        chatInput.value = '';
 
-        if (responseData.error) {
-            throw new Error(responseData.error);
-        }
-
-        const botMessage = {
-            id: Date.now().toString(),
-            content: responseData.message,
-            sender: 'bot',
-            timestamp: responseData.timestamp
-        };
-
-        // Save and display bot message
-        await saveMessage(botMessage);
-        displayMessage(botMessage);
     } catch (error) {
-        handleError(error, { showUser: true });
+        console.error('Error:', error);
     }
-};
+}
 
 /**
  * Display a message in the chat window
- * @param {Object} message - The message to display
  */
-const displayMessage = (message) => {
+function displayMessage(message, sender) {
     const messageElement = document.createElement('div');
-    messageElement.classList.add('message', `${message.sender}-message`);
-    messageElement.textContent = message.content;
+    messageElement.classList.add('message', `${sender}-message`);
+    messageElement.textContent = message;
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-};
+}
 
-// Initialize the application
-init();
