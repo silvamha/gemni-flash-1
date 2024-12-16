@@ -1,6 +1,6 @@
 /**
  * @fileoverview Storage Service - Handles all data persistence operations
- * Manages both localStorage and future database interactions
+ * Manages localStorage interactions for chat messages
  */
 
 /**
@@ -18,9 +18,21 @@ const STORAGE_KEY = 'chat_messages';
  * @param {Object} message - Message object with sender and content
  */
 export const saveMessage = (message) => {
-    const messages = getAllMessages();
-    messages.push(message);
-    localStorage.setItem('messages', JSON.stringify(messages));
+    try {
+        const messages = getAllMessages();
+        const enhancedMessage = {
+            id: crypto.randomUUID(),
+            content: message.content,
+            sender: message.sender,
+            timestamp: new Date().toISOString()
+        };
+        messages.push(enhancedMessage);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+        return enhancedMessage;
+    } catch (error) {
+        console.error('Error saving message:', error);
+        throw error;
+    }
 };
 
 /**
@@ -28,15 +40,19 @@ export const saveMessage = (message) => {
  * @returns {Array} Array of message objects
  */
 export const getAllMessages = () => {
-    const messages = localStorage.getItem('messages');
-    return messages ? JSON.parse(messages) : [];
+    try {
+        const messages = localStorage.getItem(STORAGE_KEY);
+        return messages ? JSON.parse(messages) : [];
+    } catch (error) {
+        console.error('Error getting messages:', error);
+        return [];
+    }
 };
 
 /**
  * Clears all chat messages from localStorage
- * @returns {Promise<void>}
  */
-export const clearAllMessages = async () => {
+export const clearAllMessages = () => {
     try {
         localStorage.removeItem(STORAGE_KEY);
     } catch (error) {

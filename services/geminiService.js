@@ -15,6 +15,7 @@ class GeminiService {
         
         try {
             this.genAI = new GoogleGenerativeAI(apiKey);
+            this.activeChats = new Map(); // Add chat storage
             
             // Configure safety settings to be more permissive
             const safetySettings = [
@@ -50,17 +51,6 @@ class GeminiService {
             // Format personality instructions
             this.personalityInstructions = this.formatInstructions();
             Logger.system('Personality instructions formatted successfully');
-
-            // Create chat with history
-            this.chat = this.model.startChat({
-                history: [],
-                generationConfig: {
-                    maxOutputTokens: 1000,
-                    temperature: 0.9,
-                    topP: 0.8,
-                    topK: 16,
-                }
-            });
 
             // Initialize personality
             this.initializePersonality();
@@ -214,15 +204,22 @@ class GeminiService {
         }
     }
 
-    /**
-     * Send a message to Gemini and get a response
-     */
-    async sendMessage(message, sessionId) {
-        try {
-            Logger.system('Sending message to Gemini...');
-            
-            // Safety settings for message
-            const safetySettings = [
+    async getOrCreateChat(sessionId) {
+        // If chat exists, return it
+        if (this.activeChats.has(sessionId)) {
+            return this.activeChats.get(sessionId);
+        }
+
+        // Create new chat with personality
+        const chat = this.model.startChat({
+            history: [{ role: 'user', parts: [{ text: this.personalityInstructions }] }],
+            generationConfig: {
+                maxOutputTokens: 1000,
+                temperature: 0.9,
+                topP: 0.8,
+                topK: 16,
+            },
+            safetySettings: [
                 {
                     category: "HARM_CATEGORY_HARASSMENT",
                     threshold: "BLOCK_NONE"
@@ -239,45 +236,38 @@ class GeminiService {
                     category: "HARM_CATEGORY_DANGEROUS_CONTENT",
                     threshold: "BLOCK_NONE"
                 }
-            ];
+            ]
+        });
 
-            // Get recent context if available
-            let context = [];
-            if (sessionId) {
-                context = await memoryService.getRecentContext(sessionId, 5);
-            }
+        // Store and return new chat
+        this.activeChats.set(sessionId, chat);
+        return chat;
+    }
 
-            // Format context for Gemini
-            const contextString = context.length > 0 
-                ? '\nRecent conversation:\n' + context.map(msg => 
-                    `${msg.sender === 'user' ? 'Edson' : 'Harper'}: ${msg.content}`
-                  ).join('\n')
-                : '';
+    /**
+     * Send a message to Gemini and get a response
+     * @param {string} message - User's message
+     * @param {string} sessionId - Session ID for context
+     */
+    async sendMessage(message, sessionId) {
+        try {
+            Logger.system('Sending message to Gemini...');
 
-            // Create a new chat for each message with the personality and safety settings
-            const chat = this.model.startChat({
-                history: [{ role: 'user', parts: [{ text: this.personalityInstructions }] }],
-                generationConfig: {
-                    maxOutputTokens: 1000,
-                    temperature: 0.9,
-                    topP: 0.8,
-                    topK: 16,
-                },
-                safetySettings
-            });
+            // Get or create chat for this session
+            const chat = await this.getOrCreateChat(sessionId);
 
-            // Combine personality, context, and current message
-            const prompt = `${this.personalityInstructions}${contextString}\n\nEdson: ${message}\n\nHarper:`;
-            
-            // Send the message with safety settings
-            const result = await chat.sendMessage([{ text: prompt }]);
+            // Format message to maintain Harper's identity without complex formatting
+            const formattedMessage = `USER: ${message}\nHARPER (remember you are Edson's loving girlfriend):`;
+
+            // Send message directly (chat maintains history)
+            const result = await chat.sendMessage([{ text: formattedMessage }]);
             const response = await result.response;
-            const text = response.text();
+            
+            Logger.system('Received response from Gemini');
+            return response.text();
 
-            Logger.chat('bot', text);
-            return text;
         } catch (error) {
-            Logger.error('Failed to get response: ' + error.message);
+            Logger.error('Error in sendMessage: ' + error.message);
             throw error;
         }
     }
