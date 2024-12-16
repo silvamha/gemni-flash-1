@@ -5,6 +5,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import BOT_PERSONALITY from '../public/js/services/botPersonality.js';
 import Logger from '../utils/logger.js';
+import memoryService from './memoryService.js';
 
 class GeminiService {
     constructor(apiKey) {
@@ -216,7 +217,7 @@ class GeminiService {
     /**
      * Send a message to Gemini and get a response
      */
-    async sendMessage(message) {
+    async sendMessage(message, sessionId) {
         try {
             Logger.system('Sending message to Gemini...');
             
@@ -240,6 +241,19 @@ class GeminiService {
                 }
             ];
 
+            // Get recent context if available
+            let context = [];
+            if (sessionId) {
+                context = await memoryService.getRecentContext(sessionId, 5);
+            }
+
+            // Format context for Gemini
+            const contextString = context.length > 0 
+                ? '\nRecent conversation:\n' + context.map(msg => 
+                    `${msg.sender === 'user' ? 'Edson' : 'Harper'}: ${msg.content}`
+                  ).join('\n')
+                : '';
+
             // Create a new chat for each message with the personality and safety settings
             const chat = this.model.startChat({
                 history: [{ role: 'user', parts: [{ text: this.personalityInstructions }] }],
@@ -252,15 +266,18 @@ class GeminiService {
                 safetySettings
             });
 
-            // Send the user's message
-            const result = await chat.sendMessage([{ text: message }]);
+            // Combine personality, context, and current message
+            const prompt = `${this.personalityInstructions}${contextString}\n\nEdson: ${message}\n\nHarper:`;
+            
+            // Send the message with safety settings
+            const result = await chat.sendMessage([{ text: prompt }]);
             const response = await result.response;
             const text = response.text();
-            
-            Logger.system('Received response from Gemini');
+
+            Logger.chat('bot', text);
             return text;
         } catch (error) {
-            Logger.error('Failed to get response from Gemini: ' + error.message);
+            Logger.error('Failed to get response: ' + error.message);
             throw error;
         }
     }

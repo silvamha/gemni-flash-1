@@ -68,7 +68,7 @@ app.post('/api/chat', async (req, res) => {
         Logger.system('Sending message to Gemini...');
         
         // Get response from Gemini
-        const text = await geminiService.sendMessage(message);
+        const text = await geminiService.sendMessage(message, sessionId);
 
         // Log and save bot response
         Logger.chat('bot', text);
