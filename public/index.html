@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Harper</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Main chat container -->
+    <div class="chat-container">
+        <!-- Profile image in top right -->
+        <div class="profile-container">
+            <img src="default-avatar.png" alt="Harper" class="profile-image">
+        </div>
+
+        <!-- Theme toggle button -->
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+            🌓
+        </button>
+
+        <!-- Chat messages area -->
+        <div id="chat-messages" class="chat-messages"></div>
+
+        <!-- Chat input area -->
+        <div class="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Type your message...">
+            <div class="button-container">
+                <button id="send-button">Send</button>
+                <button id="clear-chat">Clear Chat</button>
+                <button id="delete-all">Delete All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import our modules -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Modules
+node_modules/
+
+# Secrets
+.env
+
+# Notes
+notes/
+
+# Confidential
+botpersonality.js
